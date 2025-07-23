@@ -1,0 +1,42 @@
+server:
+  port: 8180
+
+spring:
+  application:
+    name: user-service
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/users}
+    username: ${SPRING_DATASOURCE_USERNAME:parma_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:password1234}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    table: flyway_schema_history
+    password: ${SPRING_DATASOURCE_PASSWORD:password1234}
+    user: ${SPRING_DATASOURCE_USERNAME:parma_user}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/users}
+logging:
+  level:
+    com.parma.auth_service: DEBUG
+    org.keycloak: DEBUG
+    org.hibernate.SQL: DEBUG
+  pattern:
+    level: "%5p [${spring.application.name},%X{trace_id},%X{span_id}]"
+jwt:
+  url: '/authorization'
+  header: 'Authorization'
+  prefix: 'Bearer '
+  expiration: 120
+  secret: ${JWT_SECRET:+2ZRPSIf72kFPBiYmg+VK+kt4VB7iGnSab0i/yOFA7S6cvrh99QOQmSpcS6H0kDqOdB0gM0UP6nUJxXh+A==}
+  default-password: ${JWT_DEFAULT_PASSWORD:mypwd@123}
