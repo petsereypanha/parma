@@ -271,7 +271,24 @@ public class BaseEntityServiceImpl implements BaseRepository {
 
     @Override
     public <T> List<T> list(Class<T> clazz, BaseSearchCriteria baseSearchCriteria) {
-        return List.of();
+        try {
+            BaseCriteria<T> baseCriteria = createCriteriaBuilder(clazz);
+            Root<T> root = baseCriteria.getCriteriaQuery().from(clazz);
+            CriteriaBuilder criteriaBuilder = baseCriteria.getCriteriaBuilder();
+
+            if (baseSearchCriteria.getJoinCriteria() != null) {
+                getJoin(baseSearchCriteria.getJoinCriteria(), root, criteriaBuilder);
+            }
+
+            CriteriaQuery<T> criteriaQuery = baseCriteria.getCriteriaQuery().select(root);
+            criteriaQuery.where(toPredicate(root, criteriaBuilder, baseSearchCriteria));
+            TypedQuery<T> query = entityManager.createQuery(baseCriteria.getCriteriaQuery());
+            return query.getResultList();
+        } catch (Exception e) {
+            log.error("Error listing entities of type {} with search criteria: {}",
+                    clazz.getSimpleName(), e.getMessage());
+            throw new BusinessException("Error retrieving entities with search criteria: " + e.getMessage());
+        }
     }
 
     @Override
