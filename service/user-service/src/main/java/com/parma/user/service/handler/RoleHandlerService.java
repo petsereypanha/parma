@@ -1,9 +1,7 @@
 package com.parma.user.service.handler;
 
 import com.parma.common.constant.ApiConstant;
-import com.parma.common.criteria.BaseSearchCriteria;
-import com.parma.common.criteria.SearchCriteria;
-import com.parma.common.criteria.SearchOperation;
+import com.parma.common.criteria.*;
 import com.parma.common.exception.ResponseErrorTemplate;
 import com.parma.user.dto.request.RoleFilterRequest;
 import com.parma.user.dto.request.RoleRequest;

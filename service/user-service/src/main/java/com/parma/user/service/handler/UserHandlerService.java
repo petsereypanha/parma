@@ -9,6 +9,7 @@ import com.parma.user.model.User;
 import com.parma.user.repository.RoleRepository;
 import com.parma.user.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,7 +21,7 @@ import java.util.Optional;
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class UserHandlerService {
 
     private final PasswordEncoder passwordEncoder;
