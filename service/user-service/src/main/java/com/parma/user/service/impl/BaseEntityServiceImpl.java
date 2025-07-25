@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service("baseEntityService")
@@ -268,60 +269,139 @@ public class BaseEntityServiceImpl implements BaseRepository {
             throw new BusinessException("Error retrieving page of entities with search criteria: " + e.getMessage());
         }
     }
-
+    // This method is a generic repository implementation that retrieves entities from the database with search criteria.
     @Override
+    @Transactional(readOnly = true)
     public <T> List<T> list(Class<T> clazz, BaseSearchCriteria baseSearchCriteria) {
-        return List.of();
+        try {
+            BaseCriteria<T> baseCriteria = createCriteriaBuilder(clazz);
+            Root<T> root = baseCriteria.getCriteriaQuery().from(clazz);
+            CriteriaBuilder criteriaBuilder = baseCriteria.getCriteriaBuilder();
+
+            if (baseSearchCriteria.getJoinCriteria() != null) {
+                getJoin(baseSearchCriteria.getJoinCriteria(), root, criteriaBuilder);
+            }
+
+            CriteriaQuery<T> criteriaQuery = baseCriteria.getCriteriaQuery().select(root);
+            criteriaQuery.where(toPredicate(root, criteriaBuilder, baseSearchCriteria));
+            TypedQuery<T> query = entityManager.createQuery(baseCriteria.getCriteriaQuery());
+            return query.getResultList();
+        } catch (Exception e) {
+            log.error("Error listing entities of type {} with search criteria: {}",
+                    clazz.getSimpleName(), e.getMessage());
+            throw new BusinessException("Error retrieving entities with search criteria: " + e.getMessage());
+        }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T> T getEntityById(Serializable id, Class<T> clazz) {
-        return null;
+        try {
+            BaseCriteria<T> baseCriteria = createCriteriaBuilder(clazz);
+            Root<T> root = baseCriteria.getCriteriaQuery().from(clazz);
+            Predicate predicate = criteriaBuilder.equal(root.get("id"), id);
+            baseCriteria.getCriteriaQuery().where(predicate);
+            TypedQuery<T> query = entityManager.createQuery(baseCriteria.getCriteriaQuery());
+            return Optional.ofNullable(query.getSingleResult())
+                    .orElseThrow(() -> new BusinessException("Entity not found with id: " + id));
+        } catch (Exception e) {
+            log.error("Error retrieving entity of type {} with id {}: {}", clazz.getSimpleName(), id, e.getMessage());
+            throw new BusinessException("Error retrieving entity: " + e.getMessage());
+        }
     }
 
     @Override
+    @Transactional
     public <T> void saveOrUpdate(T entity) {
-
+        try {
+            if (idValue(entity) == null) {
+                entityManager.persist(entity);
+            } else {
+                entityManager.merge(entity);
+            }
+        } catch (Exception e) {
+            log.error("Error saving/updating entity of type {}: {}", entity.getClass().getSimpleName(), e.getMessage());
+            throw new BusinessException("Error saving/updating entity: " + e.getMessage());
+        }
     }
 
     @Override
+    @Transactional
     public <T> void saveOrUpdate(List<T> entities) {
-
+        if (entities != null && !entities.isEmpty()) {
+            entities.forEach(this::saveOrUpdate);
+        }
     }
 
     @Override
+    @Transactional
     public <T> void delete(T entity) {
-
+        try {
+            entityManager.remove(entity);
+        } catch (Exception e) {
+            log.error("Error deleting entity of type {}: {}", entity.getClass().getSimpleName(), e.getMessage());
+            throw new BusinessException("Error deleting entity: " + e.getMessage());
+        }
     }
 
     @Override
+    @Transactional
     public <T> void delete(List<T> entities) {
-
+        if (entities != null && !entities.isEmpty()) {
+            entities.forEach(this::delete);
+        }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T> List<T> listByField(String field, Object value, Class<T> clazz) {
-        return List.of();
+        try {
+            return listByObject(field, value, clazz);
+        } catch (Exception e) {
+            log.error("Error listing entities of type {} by field {}: {}", clazz.getSimpleName(), field, e.getMessage());
+            throw new BusinessException("Error retrieving entities by field: " + e.getMessage());
+        }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T> T getByField(String field, Object value, Class<T> clazz) {
-        return null;
+        List<T> results = listByField(field, value, clazz);
+        return results.isEmpty() ? null : results.get(0);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T> List<T> query(String query, Class<T> clazz) {
-        return List.of();
+        try {
+            return entityManager.createNativeQuery(query, clazz).getResultList();
+        } catch (Exception e) {
+            log.error("Error executing query for type {}: {}", clazz.getSimpleName(), e.getMessage());
+            throw new BusinessException("Error executing query: " + e.getMessage());
+        }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Object[]> query(String query) {
-        return List.of();
+        try {
+            return entityManager.createNativeQuery(query).getResultList();
+        } catch (Exception e) {
+            log.error("Error executing native query: {}", e.getMessage());
+            throw new BusinessException("Error executing native query: " + e.getMessage());
+        }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T> List<T> list(CriteriaQuery<T> criteriaQuery) {
-        return List.of();
+        try {
+            TypedQuery<T> query = entityManager.createQuery(criteriaQuery);
+            return query.getResultList();
+        } catch (Exception e) {
+            log.error("Error executing criteria query: {}", e.getMessage());
+            throw new BusinessException("Error executing criteria query: " + e.getMessage());
+        }
     }
 
     // implementation of the List method with Predicate
@@ -330,7 +410,7 @@ public class BaseEntityServiceImpl implements BaseRepository {
         TypedQuery<T> query = entityManager.createQuery(criteriaQuery);
         return query.getResultList();
     }
-    // This implementation is used to get the ID value of an entity in Update.
+    // This implementation is used to get the ID value of an entity in saveOrUpdate.
     private <T>Serializable idValue(T entity) {
         return ((JpaEntityInformation<T, Serializable>) entityInformation(entityManager, entity.getClass())).getId(entity);
 
@@ -511,5 +591,30 @@ public class BaseEntityServiceImpl implements BaseRepository {
             case NOT_IN -> builder.not(root.get(field)).in(value);
             default -> builder.equal(root.get(field), value);
         };
+    }
+
+    // This method is used to list entities by a specific field and value and implementation in listByField  .
+    private <T> List<T> listByObject(String field, Object value, Class<T> clazz) {
+        BaseCriteria<T> criteria = createCriteriaBuilder(clazz);
+        Root<T> root = criteria.getCriteriaQuery().from(clazz);
+        Predicate predicate = createPredicate(root, field, value);
+        criteria.getCriteriaQuery().where(predicate);
+        TypedQuery<T> query = entityManager.createQuery(criteria.getCriteriaQuery());
+        return query.getResultList();
+    }
+    private <T> Predicate createPredicate(Root<T> root, String field, Object value) {
+        if (value instanceof Date) {
+            return criteriaBuilder.equal(root.get(field), (Date) value);
+        } else if (value instanceof String) {
+            return criteriaBuilder.equal(root.get(field), (String) value);
+        } else if (value instanceof Integer) {
+            return criteriaBuilder.equal(root.get(field), (Integer) value);
+        } else if (value instanceof Double) {
+            return criteriaBuilder.equal(root.get(field), (Double) value);
+        } else if (value instanceof Boolean) {
+            return criteriaBuilder.equal(root.get(field), (Boolean) value);
+        } else {
+            return criteriaBuilder.equal(root.get(field), value);
+        }
     }
 }
