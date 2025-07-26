@@ -6,6 +6,7 @@ import com.parma.common.exception.ResponseErrorTemplate;
 import com.parma.common.repository.BaseRepository;
 import com.parma.user.dto.request.RoleFilterRequest;
 import com.parma.user.dto.request.RoleRequest;
+import com.parma.user.model.Role;
 import com.parma.user.repository.RoleRepository;
 import com.parma.user.service.RoleService;
 import com.parma.user.service.handler.PageableResponseHandlerService;
@@ -33,6 +34,18 @@ public class RoleServiceImpl implements RoleService {
         try {
             // Validate the request
             ResponseErrorTemplate validatedError = roleHandlerService.roleRequestValidation(request);
+            if( validatedError != null && validatedError.isError()) {
+                return validatedError;
+            }
+            // Chack for duplicate role name
+            if (roleRepository.findFirstByName(request.name()).isPresent()) {
+                return createErrorResponse("Role name already exists", ApiConstant.BUSINESS_ERROR.getKey());
+            }
+            Role role = new Role();
+            role = roleHandlerService.convertRoleRequestToRole(request, role);
+            role.setStatus(ApiConstant.ACTIVE.getKey());
+            role = roleRepository.save(role);
+            return createSuccessResponse(roleHandlerService.convertRoleToRoleResponse(role));
         } catch (BusinessException e) {
             log.error("Business error retrieving roles with filter {}: {}", request, e.getMessage());
             return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
@@ -77,6 +90,16 @@ public class RoleServiceImpl implements RoleService {
     public ResponseErrorTemplate disActivateRole(Set<Long> ids, String status) {
         return null;
     }
+    // Method to create a standardized success response
+    private ResponseErrorTemplate createSuccessResponse(Object data) {
+        return new ResponseErrorTemplate(
+                ApiConstant.SUCCESS.getDescription(),
+                ApiConstant.SUCCESS.getKey(),
+                data,
+                false
+        );
+    }
+    // create a standardized error response
     private ResponseErrorTemplate createErrorResponse(String message, String code) {
         return new ResponseErrorTemplate(
                 message,
