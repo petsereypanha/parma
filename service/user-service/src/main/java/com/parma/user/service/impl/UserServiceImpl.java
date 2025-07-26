@@ -10,7 +10,6 @@ import com.parma.common.exception.ResponseErrorTemplate;
 import com.parma.user.constant.Constant;
 import com.parma.user.dto.request.*;
 import com.parma.user.dto.response.UserPaginationResponse;
-import com.parma.user.exception.BasedException;
 import com.parma.user.exception.UserValidationException;
 import com.parma.user.model.User;
 import com.parma.user.repository.*;
@@ -27,8 +26,6 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
