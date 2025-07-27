@@ -95,8 +95,22 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ResponseErrorTemplate findById(Long id) {
-        return null;
+        try {
+            Role role = roleRepository.findById(id)
+                    .orElseThrow(() -> new BusinessException(
+                            String.format(ApiConstant.ROLE_ID_NOT_FOUND.getDescription(), id)));
+
+            return createSuccessResponse(roleHandlerService.convertRoleToRoleResponse(role));
+        } catch (BusinessException e) {
+            log.error("Business error finding role by id {}: {}", id, e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error finding role by id {}: {}", id, e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
 
     @Override
