@@ -1,11 +1,18 @@
 package com.parma.user.service.impl;
 
 import com.parma.common.constant.ApiConstant;
+import com.parma.common.criteria.BaseSearchCriteria;
+import com.parma.common.criteria.SearchCriteria;
+import com.parma.common.criteria.SearchOperation;
+import com.parma.common.dto.Metadata;
+import com.parma.common.dto.PageableResponse;
 import com.parma.common.exception.BusinessException;
 import com.parma.common.exception.ResponseErrorTemplate;
 import com.parma.common.repository.BaseRepository;
 import com.parma.user.dto.request.RoleFilterRequest;
 import com.parma.user.dto.request.RoleRequest;
+import com.parma.user.dto.response.RolePaginationResponse;
+import com.parma.user.dto.response.RoleResponse;
 import com.parma.user.model.Role;
 import com.parma.user.repository.RoleRepository;
 import com.parma.user.service.RoleService;
@@ -15,8 +22,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -114,13 +124,69 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ResponseErrorTemplate findAll(RoleFilterRequest filterRequest) {
-        return null;
+        try {
+            // Build search criteria
+            BaseSearchCriteria baseSearchCriteria = buildSearchCriteria(filterRequest);
+            // Get paginated results
+            PageableResponse<Role> pageResponse = baseRepository.listPage(
+                    Role.class, baseSearchCriteria, filterRequest);
+            if (pageResponse == null || pageResponse.getContent().isEmpty()) {
+                log.info("No roles found with filter: {}", filterRequest);
+                return createErrorResponse(ApiConstant.ROLE_NOT_FOUND.getDescription(),
+                        ApiConstant.ROLE_NOT_FOUND.getKey());
+            }
+            // Convert roles to response DTOs
+            List<RoleResponse> roleResponses = pageResponse.getContent().stream()
+                    .map(roleHandlerService::convertRoleToRoleResponse)
+                    .collect(Collectors.toList());
+            // Create pagination response
+            RolePaginationResponse rolePaginationResponse = new RolePaginationResponse(
+                    roleResponses,
+                    pageableResponseHandlerService.handlePaginationResponse(
+                            pageResponse.getTotalElements(),
+                            pageResponse.getPageNumber(),
+                            pageResponse.getPageSize()
+                    ),
+                    Metadata.builder()
+                            .hasNext(!pageResponse.isLast() && !pageResponse.isEmpty())
+                            .totalUsers(pageResponse.getTotalElements())
+                            .hasPrevious(!pageResponse.isFirst() && !pageResponse.isEmpty())
+                            .currentPage(pageResponse.getPageNumber())
+                            .pageSize(pageResponse.getPageSize())
+                            .build()
+            );
+
+            return createSuccessResponse(rolePaginationResponse);
+        } catch (BusinessException e) {
+            log.error("Business error retrieving roles with filter {}: {}", filterRequest, e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error retrieving roles with filter {}: {}", filterRequest, e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
 
     @Override
+    @Transactional
     public ResponseErrorTemplate delete(Long id) {
-        return null;
+        try {
+            Role role = roleRepository.findFirstById(id)
+                    .orElseThrow(() -> new BusinessException(
+                            String.format(ApiConstant.ROLE_ID_NOT_FOUND.getDescription(), id)));
+
+            roleRepository.delete(role);
+            return createSuccessResponse(null);
+        } catch (BusinessException e) {
+            log.error("Business error deleting role {}: {}", id, e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error deleting role {}: {}", id, e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
 
     @Override
@@ -154,5 +220,26 @@ public class RoleServiceImpl implements RoleService {
                 new Object(),
                 true
         );
+    }
+    // Method to build search criteria from the filter request
+    private BaseSearchCriteria buildSearchCriteria(RoleFilterRequest roleFilterRequest) {
+        BaseSearchCriteria baseSearchCriteria = new BaseSearchCriteria();
+        if (roleFilterRequest.hasId()) {
+            baseSearchCriteria.addCriteria(new SearchCriteria(
+                    "id", roleFilterRequest.getId(), SearchOperation.EQUAL));
+        }
+        if (roleFilterRequest.hasName()) {
+            baseSearchCriteria.addCriteria(new SearchCriteria(
+                    "name", "%" + roleFilterRequest.getName().toLowerCase() + "%", SearchOperation.MATCH));
+        }
+        if (roleFilterRequest.hasStatus()) {
+            baseSearchCriteria.addCriteria(new SearchCriteria(
+                    "status", roleFilterRequest.getStatus(), SearchOperation.EQUAL));
+        }
+        if (StringUtils.hasText(roleFilterRequest.getSortBy())) {
+            baseSearchCriteria.setSortBy(roleFilterRequest.getSortBy());
+            baseSearchCriteria.setDesc(roleFilterRequest.isDesc());
+        }
+        return baseSearchCriteria;
     }
 }
