@@ -170,8 +170,23 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional
     public ResponseErrorTemplate delete(Long id) {
-        return null;
+        try {
+            Role role = roleRepository.findFirstById(id)
+                    .orElseThrow(() -> new BusinessException(
+                            String.format(ApiConstant.ROLE_ID_NOT_FOUND.getDescription(), id)));
+
+            roleRepository.delete(role);
+            return createSuccessResponse(null);
+        } catch (BusinessException e) {
+            log.error("Business error deleting role {}: {}", id, e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error deleting role {}: {}", id, e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
 
     @Override
