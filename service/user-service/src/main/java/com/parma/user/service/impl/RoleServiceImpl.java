@@ -57,8 +57,41 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional
     public ResponseErrorTemplate update(Long id, RoleRequest request) {
-        return null;
+        try {
+            // Validate the request
+            ResponseErrorTemplate validationError = roleHandlerService.roleRequestValidation(request);
+            if (validationError != null && validationError.isError()) {
+                return validationError;
+            }
+            // Find existing role
+            Role role = roleRepository.findFirstById(id)
+                    .orElseThrow(() -> new BusinessException(
+                            String.format(ApiConstant.ROLE_ID_NOT_FOUND.getDescription(), id)));
+            // Check for duplicate name if name is being updated
+            if (request.name() != null && !request.name().equals(role.getName())) {
+                roleRepository.findFirstByName(request.name())
+                        .ifPresent(existingRole -> {
+                            if (!existingRole.getId().equals(id)) {
+                                throw new BusinessException("Role name already exists");
+                            }
+                        });
+            }
+            // Update role
+            role = roleHandlerService.convertRoleRequestToRole(request, role);
+            role.setStatus(request.status() != null ? request.status() : role.getStatus());
+            role = roleRepository.saveAndFlush(role);
+
+            return createSuccessResponse(roleHandlerService.convertRoleToRoleResponse(role));
+        } catch (BusinessException e) {
+            log.error("Business error updating role: {}", e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error updating role: {}", e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
 
     @Override
