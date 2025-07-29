@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -231,8 +232,29 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional
     public ResponseErrorTemplate disActivateRole(Set<Long> ids, String status) {
-        return null;
+        try {
+            List<Role> roles = roleRepository.findAllByIdIn(ids);
+            if (roles.isEmpty()) {
+                return createErrorResponse(ApiConstant.ROLE_NOT_FOUND.getDescription(),
+                        ApiConstant.ROLE_NOT_FOUND.getKey());
+            }
+
+            roles.forEach(role -> {
+                role.setStatus(Optional.ofNullable(status).orElse(ApiConstant.IN_ACTIVE.getKey()));
+                roleRepository.saveAndFlush(role);
+            });
+
+            return createSuccessResponse(null);
+        } catch (BusinessException e) {
+            log.error("Business error deactivating roles: {}", e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error deactivating roles: {}", e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
     // Method to create a standardized success response
     private ResponseErrorTemplate createSuccessResponse(Object data) {
