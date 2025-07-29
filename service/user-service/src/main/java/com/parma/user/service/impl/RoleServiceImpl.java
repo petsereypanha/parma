@@ -190,8 +190,25 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional
     public ResponseErrorTemplate deleteAll(Set<Long> ids) {
-        return null;
+        try {
+            List<Role> roles = roleRepository.findAllByIdIn(ids);
+            if (roles.isEmpty()) {
+                return createErrorResponse(ApiConstant.ROLE_NOT_FOUND.getDescription(),
+                        ApiConstant.ROLE_NOT_FOUND.getKey());
+            }
+
+            roleRepository.deleteAll(roles);
+            return createSuccessResponse(null);
+        } catch (BusinessException e) {
+            log.error("Business error deleting roles {}: {}", ids, e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error deleting roles {}: {}", ids, e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
 
     @Override
