@@ -212,8 +212,22 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ResponseErrorTemplate findByName(String name) {
-        return null;
+        try {
+            Role role = roleRepository.findFirstByNameAndStatus(name, ApiConstant.ACTIVE.getKey())
+                    .orElseThrow(() -> new BusinessException(
+                            String.format(ApiConstant.ROLE_NAME_NOT_FOUND.getDescription(), name)));
+
+            return createSuccessResponse(roleHandlerService.convertRoleToRoleResponse(role));
+        } catch (BusinessException e) {
+            log.error("Business error finding role by name {}: {}", name, e.getMessage());
+            return createErrorResponse(e.getMessage(), ApiConstant.BUSINESS_ERROR.getKey());
+        } catch (Exception e) {
+            log.error("Unexpected error finding role by name {}: {}", name, e.getMessage());
+            return createErrorResponse(ApiConstant.INTERNAL_SERVER_ERROR.getDescription(),
+                    ApiConstant.INTERNAL_SERVER_ERROR.getKey());
+        }
     }
 
     @Override
