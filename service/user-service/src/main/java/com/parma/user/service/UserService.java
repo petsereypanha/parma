@@ -25,6 +25,6 @@ public interface UserService {
 
     ResponseErrorTemplate disActivateUser(Set<Long> ids, String status);
 
-    ResponseErrorTemplate resetPassword(Set<Long> ids);;
+    ResponseErrorTemplate resetPassword(Set<Long> ids);
 
 }
