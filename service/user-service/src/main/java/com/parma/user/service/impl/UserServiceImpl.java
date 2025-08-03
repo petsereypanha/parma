@@ -311,7 +311,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public ResponseErrorTemplate resetPassword(Set<Long> ids) {
         List<User> users = userRepository.findAllByIdIn(ids);
-        // Validate if users doesn't empty
+        // Validate if users don't empty
         if (users.isEmpty()) {
             log.info("reset user password not found with user ids: {}", ids);
             return new ResponseErrorTemplate(

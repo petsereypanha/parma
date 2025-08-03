@@ -95,7 +95,7 @@ public class UserController {
             );
         }
     }
-    @GetMapping("{/id}")
+    @GetMapping("/{id}")
     public ResponseEntity<ResponseErrorTemplate> getUserById(@PathVariable Long id) {
         log.info("Intercept check user by ID: {}", id);
         try{
@@ -121,7 +121,7 @@ public class UserController {
             );
         }
     }
-    @PutMapping("{/id}")
+    @PutMapping("/{id}")
     public ResponseEntity<ResponseErrorTemplate> update(@PathVariable Long id, @Validated @RequestBody UserRequest userRequest) {
         log.info("Intercept update user with ID: {} and request: {}", id, userRequest);
         try {
