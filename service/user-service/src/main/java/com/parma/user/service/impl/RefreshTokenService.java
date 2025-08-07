@@ -4,6 +4,7 @@ import com.parma.common.constant.ApiConstant;
 import com.parma.common.dto.EmptyObject;
 import com.parma.common.exception.CustomMessageException;
 import com.parma.common.exception.ResponseErrorTemplate;
+import com.parma.common.exception.SystemException;
 import com.parma.user.dto.request.RefreshTokenRequest;
 import com.parma.user.dto.response.AuthenticationResponse;
 import com.parma.user.model.CustomUserDetail;
@@ -16,7 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
