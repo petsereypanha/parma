@@ -1,5 +1,6 @@
 package com.parma.user.service;
 
+import com.parma.common.exception.ResponseErrorTemplate;
 import com.parma.user.model.CustomUserDetail;
 import io.jsonwebtoken.Claims;
 
@@ -11,4 +12,5 @@ public interface JwtService {
     String generateToken(CustomUserDetail customUserDetail);
     String refreshToken(CustomUserDetail customUserDetail);
     boolean isValidToken(String token);
+    ResponseErrorTemplate verifyToken(String authorizationHeader);
 }
