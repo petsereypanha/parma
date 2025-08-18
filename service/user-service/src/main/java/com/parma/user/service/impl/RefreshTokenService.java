@@ -2,25 +2,18 @@ package com.parma.user.service.impl;
 
 import com.parma.common.constant.ApiConstant;
 import com.parma.common.dto.EmptyObject;
-import com.parma.common.exception.CustomMessageException;
-import com.parma.common.exception.ResponseErrorTemplate;
-import com.parma.common.exception.SystemException;
+import com.parma.common.exception.*;
 import com.parma.user.dto.request.RefreshTokenRequest;
 import com.parma.user.dto.response.AuthenticationResponse;
-import com.parma.user.model.CustomUserDetail;
-import com.parma.user.model.RefreshToken;
-import com.parma.user.model.User;
-import com.parma.user.repository.RefreshTokenRepository;
-import com.parma.user.repository.UserRepository;
+import com.parma.user.model.*;
+import com.parma.user.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -30,7 +23,6 @@ public class RefreshTokenService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final CustomUserDetailService customUserDetailService;
-
 
     public void createRefreshToken(String username, String token, Date tokenExpiration) {
         Optional<User> user = userRepository.findFirstByUsernameAndStatus(username, ApiConstant.ACTIVE.getKey());
@@ -61,6 +53,7 @@ public class RefreshTokenService {
         log.info("Refresh refreshToken created successfully..!");
         refreshTokenRepository.save(refreshToken);
     }
+
     public ResponseErrorTemplate refreshToken(RefreshTokenRequest refreshTokenRequest) {
         try {
             ResponseErrorTemplate errorTemplate = this.findByToken(refreshTokenRequest.refreshToken())
