@@ -12,7 +12,7 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "tt_refresh_token")
+@Table(name = "refresh_token")
 public class RefreshToken {
 
     @Id
